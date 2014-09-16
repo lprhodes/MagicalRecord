@@ -48,4 +48,26 @@
     });
 }
 
+- (BOOL) saveWithBlockAndWait:(void(^)(NSManagedObjectContext *localContext))block error:(NSError **)error
+{
+    NSString *contextWorkingName = NSStringFromSelector(_cmd);
+    
+    NSParameterAssert(block);
+    
+    MRLogVerbose(@"Dispatching save request: %@", contextWorkingName);
+    MRLogVerbose(@"%@ save starting", contextWorkingName);
+    
+    NSManagedObjectContext *localContext = [self newConfinementContext];
+    NSManagedObjectContext *mainContext = [self context];
+    
+    [mainContext MR_observeContextDidSave:localContext];
+    [mainContext setMergePolicy:NSMergeByPropertyStoreTrumpMergePolicy];
+    [localContext MR_setWorkingName:contextWorkingName];
+    
+    block(localContext);
+    
+    [localContext MR_saveWithOptions:MRSaveSynchronously completion:nil];
+    [mainContext MR_stopObservingContextDidSave:localContext];
+}
+
 @end
